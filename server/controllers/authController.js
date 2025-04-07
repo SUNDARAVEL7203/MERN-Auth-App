@@ -191,55 +191,61 @@ export const isAuthenticated = async (req,res) => {
 //Send Password Reset
 export const sendResetOtp = async (req, res) => {
     const { email } = req.body;
-    if(!email) {
-        return res.json({success : false, message: "Email is required"})
-    }
-    try {
-        const user = await  userModel.findOne({email});
-        if(!user){
-            return res.json({success: false, message: error.message})
-        }
-        const otp = String(Math.floor(100000 + Math.random() * 900000)) // Javascript random method to generate OTP
 
-        user.verifyOtp = otp;
-       
-        user.verifyOtpExpireAt = Date.now() + 15* 60 * 1000 // Otp expiry timr converted in millseconds
-       
-        await user.save(); // Storing the verifyOtpExpireAt field to the mongodb database
-    
-        const mailOption = {
-            from : process.env.SENDER_EMAIL,
-            to : user.email,
-            subject : "Password Reset OTP ",
-            text: `Your password for resetting your password is ${otp}.
-                    Use this OTP to reset your password`
+    if (!email) {
+        return res.json({ success: false, message: "Email is required" });
+    }
+
+    try {
+        const user = await userModel.findOne({ email });
+
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
         }
-        
+
+        const otp = String(Math.floor(100000 + Math.random() * 900000)); // Generate 6-digit OTP
+
+        // ✅ Store OTP in resetOtp field (not verifyOtp)
+        user.resetOtp = otp;
+        user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+        await user.save(); // Save to database
+
+        const mailOption = {
+            from: process.env.SENDER_EMAIL,
+            to: user.email,
+            subject: "Password Reset OTP",
+            text: `Your OTP for resetting your password is ${otp}. Use this OTP to reset your password.`
+        };
+
         await transporter.sendMail(mailOption);
 
-        return res.json({success : true, message: 'OTP send to your email'})
+        return res.json({ success: true, message: 'OTP sent to your email' });
+
     } catch (error) {
-        
+        console.error("Error sending reset OTP:", error);
+        return res.json({ success: false, message: "Something went wrong while sending OTP" });
     }
 }
 
+
 //Reset User password
 export const resetPassword = async (req, res) => {
-    const {email, otp, newPassword} = req.body;
+    const { email, otp, newPassword } = req.body;
 
     if (!email || !otp || !newPassword) {
         return res.json({ success: false, message: "Email, OTP, and new password are required" });
-    }// Check any of the fields given is wrong
+    }
 
     try {
-        const user = await userModel.findOne({ email });// Find whether user exists with same emailId
+        const user = await userModel.findOne({ email });
 
         if (!user) {
             return res.json({ success: false, message: 'User not found' });
-        }// 
+        }
 
-        console.log("Stored OTP:", user.resetOtp); //  Check what is stored in DB
-        console.log("Entered OTP:", otp);          // Check what the frontend is sending
+        console.log("Stored OTP:", user.resetOtp);
+        console.log("Entered OTP:", otp);
 
         if (!user.resetOtp || user.resetOtp !== otp) {
             return res.json({ success: false, message: "Invalid OTP" });
@@ -249,13 +255,14 @@ export const resetPassword = async (req, res) => {
             return res.json({ success: false, message: "OTP Expired" });
         }
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);// Using hash method to encrypt the password
-
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;
-        user.resetOtp = '';  // ✅ Clear OTP after successful reset
+        user.resetOtp = '';
         user.resetOtpExpireAt = 0;
 
         await user.save();
+
+        res.clearCookie("token"); // ✅ Clear token if previously logged in
 
         return res.json({ success: true, message: "Password has been reset successfully" });
 
