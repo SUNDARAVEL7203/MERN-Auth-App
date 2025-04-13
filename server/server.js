@@ -24,13 +24,13 @@ app.use(cookieParser());
 
 const allowedOrigins = [
     'http://localhost:5173',
-    'https://mernauthapp1234.netlify.app/', // your deployed frontend
+    'https://mernauthapp1234.netlify.app',
   ];
   
-  app.use(cors({
-    origin: allowedOrigins,
-    credentials: true,
-  }));// credintials true is give to send the cookies in response
+ app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));// credintials true is give to send the cookies in response
 
 app.get("/" , (req, res) => res.send("Welcome to MERN Auth Application"))
 app.use("/api/auth", authRouter)
