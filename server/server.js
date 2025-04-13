@@ -16,13 +16,27 @@ const port = process.env.PORT || 5000
 
 connectDB()
 
-const allowedOrigins = ['http://localhost:5173']
+
 
 app.use(express.json()) // All the requst will be sent in the expres
 
 app.use(cookieParser());
 
-app.use(cors({ origin: allowedOrigins, credentials: true}))// credintials true is give to send the cookies in response
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://mernauthapp1234.netlify.app/', // your deployed frontend
+  ];
+  
+  app.use(cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true
+  }));// credintials true is give to send the cookies in response
 
 app.get("/" , (req, res) => res.send("Welcome to MERN Auth Application"))
 app.use("/api/auth", authRouter)
